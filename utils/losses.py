@@ -5,16 +5,16 @@ def init_brt_hjivi_loss(dynamics, minWith, dirichlet_loss_divisor):
     def brt_hjivi_loss(state, value, dvdt, dvds, boundary_value, dirichlet_mask, output):
         if torch.all(dirichlet_mask):
             # pretraining loss
-            diff_constraint_hom = torch.Tensor([0])
+            diff_constraint_hom = torch.Tensor([0]) #TODO Hanyang: it should be output?
         else:
             ham = dynamics.hamiltonian(state, dvds)
             if minWith == 'zero':
                 ham = torch.clamp(ham, max=0.0)
 
-            diff_constraint_hom = dvdt - ham
+            diff_constraint_hom = dvdt - ham  #TODO Hanyang: why not -(dvdt+ham)?
             if minWith == 'target':
                 diff_constraint_hom = torch.max(
-                    diff_constraint_hom, value - boundary_value)
+                    diff_constraint_hom, value - boundary_value)  # - min
         dirichlet = value[dirichlet_mask] - boundary_value[dirichlet_mask]
         if dynamics.deepreach_model == 'exact':
             if torch.all(dirichlet_mask):
