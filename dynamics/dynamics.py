@@ -52,7 +52,7 @@ class Dynamics(ABC):
         return input
 
     # convert model io to real value
-    def io_to_value(self, input, output):  # V(x,t) =  l(x) + t * NN(x,t)
+    def io_to_value(self, input, output):  # exact: V(x,t) =  l(x) + t * NN(x,t)
         if self.deepreach_model=="diff":
             return (output * self.value_var / self.value_normto) + self.boundary_fn(self.input_to_coord(input)[..., 1:])
         elif self.deepreach_model=="exact":
@@ -680,7 +680,7 @@ class ReachAvoidRocketLanding(Dynamics):
 
         # First compute the target function as you normally would but then normalize it later.
         max_dist = torch.max(dist_x, dist_y)
-        return torch.where((max_dist >= 0), max_dist/150.0, max_dist/10.0)
+        return torch.where((max_dist >= 0), max_dist/150.0, max_dist/10.0)  #TODO Hanyang: why is >=0???
 
     def avoid_fn(self, state):
         # distance to floor

@@ -105,7 +105,7 @@ class Experiment(ABC):
 
         # copy settings from Raissi et al. (2019) and here 
         # https://github.com/maziarraissi/PINNs
-        if use_lbfgs:
+        if use_lbfgs:  # TODO Hanyang: what's lbfgs? It's just the second-order optimization.
             optim = torch.optim.LBFGS(lr=lr, params=self.model.parameters(), max_iter=50000, max_eval=50000,
                                     history_size=50, line_search_fn='strong_wolfe')
 
@@ -483,7 +483,7 @@ class Experiment(ABC):
         if checkpoint_toload is None:
             print('running cross-checkpoint testing')
 
-            for i in tqdm(range(sidelen), desc='Checkpoint'):
+            for i in tqdm(range(sidelen), desc='Checkpoint'):  # TODO Hanyang: sidelen not defined
                 self._load_checkpoint(epoch=checkpoints[i])
                 raise NotImplementedError
 

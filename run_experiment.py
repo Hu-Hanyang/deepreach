@@ -9,7 +9,7 @@ import numpy as np
 import pickle
 
 from datetime import datetime
-from dynamics import dynamics 
+from dynamics import dynamics, reach_avoid_games
 from experiments import experiments
 from utils import modules, dataio, losses
 
@@ -94,7 +94,18 @@ if (mode == 'all') or (mode == 'train'):
     p.add_argument('--minWith', type=str, required=True, choices=['none', 'zero', 'target'], help='BRS vs BRT computation (typically should be using target for BRT)')
 
     # load dynamics_class choices dynamically from dynamics module
-    dynamics_classes_dict = {name: clss for name, clss in inspect.getmembers(dynamics, inspect.isclass) if clss.__bases__[0] == dynamics.Dynamics}
+    # dynamics_classes_dict = {name: clss for name, clss in inspect.getmembers(dynamics, inspect.isclass) if clss.__bases__[0] == dynamics.Dynamics}
+    # Dynamically load classes from the `dynamics` folder
+    dynamics_modules = [dynamics, reach_avoid_games]
+    # Create a dictionary of dynamics classes
+    dynamics_classes_dict = {}
+    for module in dynamics_modules:
+        classes = {
+            name: clss
+            for name, clss in inspect.getmembers(module, inspect.isclass)
+            if clss.__bases__[0] == dynamics.Dynamics  # Replace with your base class
+        }
+        dynamics_classes_dict.update(classes)
     p.add_argument('--dynamics_class', type=str, required=True, choices=dynamics_classes_dict.keys(), help='Dynamics class to use.')
     # load special dynamics_class arguments dynamically from chosen dynamics class
     dynamics_class = dynamics_classes_dict[p.parse_known_args()[0].dynamics_class]
@@ -106,6 +117,7 @@ if (mode == 'all') or (mode == 'train'):
             p.add_argument('--' + param, type=dynamics_params[param].annotation, required=True, help='special dynamics_class argument')
 
 if (mode == 'all') or (mode == 'test'):
+    p.add_argument('--device', type=str, default='cuda:0', required=False, help='CUDA Device to use.')
     p.add_argument('--dt', type=float, default=0.0025, help='The dt used in testing simulations')
     p.add_argument('--checkpoint_toload', type=int, default=None, help="The checkpoint to load for testing (-1 for final training checkpoint, None for cross-checkpoint testing")
     p.add_argument('--num_scenarios', type=int, default=100000, help='The number of scenarios sampled in scenario optimization for testing')
@@ -164,7 +176,16 @@ torch.manual_seed(orig_opt.seed)
 random.seed(orig_opt.seed)
 np.random.seed(orig_opt.seed)
 
-dynamics_class = getattr(dynamics, orig_opt.dynamics_class)
+# Try to get the dynamics class from the modules
+try:
+    dynamics_class = getattr(dynamics, orig_opt.dynamics_class)
+except AttributeError:
+    try:
+        dynamics_class = getattr(reach_avoid_games, orig_opt.dynamics_class)
+    except AttributeError:
+        raise AttributeError(
+            f"Neither 'dynamics' nor 'reach_avoid_games' has a class named '{orig_opt.dynamics_class}'"
+        )
 dynamics = dynamics_class(**{argname: getattr(orig_opt, argname) for argname in inspect.signature(dynamics_class).parameters.keys() if argname != 'self'})
 dynamics.deepreach_model=orig_opt.deepreach_model
 dataset = dataio.ReachabilityDataset(
