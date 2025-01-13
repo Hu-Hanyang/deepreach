@@ -63,7 +63,7 @@ class OneSIGvsOneSIG(Dynamics):
         dist_x = torch.max(lower_x, upper_x)
         upper_y = state[..., 1] - 0.3
         lower_y = 0.1 - state[..., 1]
-        dist_y = torch.max(lower_y, upper_x)
+        dist_y = torch.max(lower_y, upper_y)
         max_dist = torch.max(dist_x, dist_y)
 
         return torch.where((max_dist<=0), max_dist/1.0, max_dist/1.0)
@@ -75,8 +75,6 @@ class OneSIGvsOneSIG(Dynamics):
         return capture_dist
     
     def boundary_fn(self, state):
-        print(f"reach_fn output: {self.reach_fn(state)}")
-        print(f"avoid_fn output: {self.avoid_fn(state)}")
         return torch.maximum(self.reach_fn(state), -self.avoid_fn(state))
     
     def sample_target_state(self, num_samples):
@@ -95,28 +93,29 @@ class OneSIGvsOneSIG(Dynamics):
         return torch.min(torch.maximum(reach_values, torch.cummax(-avoid_values, dim=-1).values), dim=-1).values
 
     def hamiltonian(self, state, dvds):
-        u1_coeff = torch.abs(dvds[..., 0]) * self.va
-        u2_coeff = torch.abs(dvds[..., 1]) * self.va
-        d1_coeff = torch.abs(dvds[..., 2]) * self.vd
-        d2_coeff = torch.abs(dvds[..., 3]) * self.vd
-        
-        return self.u_range[0]*(u1_coeff + u1_coeff) + self.d_range[1]*(d1_coeff + d1_coeff)
+        opt_ctrl = self.optimal_control(state, dvds)
+        opt_distb = self.optimal_disturbance(state, dvds)
+
+        u1_coeff = dvds[..., 0] * self.va * opt_ctrl[..., 0]
+        u2_coeff = dvds[..., 1] * self.va * opt_ctrl[..., 1]
+        d1_coeff = dvds[..., 2] * self.vd * opt_distb[..., 0]
+        d2_coeff = dvds[..., 3] * self.vd * opt_distb[..., 1]
+
+        return u1_coeff + u2_coeff + d1_coeff + d2_coeff
     
     def optimal_control(self, state, dvds):
         # control aims to minimize the value
-        ctrl_len = torch.sqrt(dvds[0]*dvds[0]+dvds[1]*dvds[1])
-        opt_ctrl1 = self.u_range[0] * torch.abs(dvds[0]) / ctrl_len
-        opt_ctrl2 = self.u_range[0] * torch.abs(dvds[1]) / ctrl_len
-        
-        return torch.cat((opt_ctrl1[..., None], opt_ctrl2[..., None]), dim=-1)
+        ctrl_len = torch.norm(dvds[..., 0] * dvds[..., 0] + dvds[..., 1] * dvds[..., 1], dim=-1)
+        opt_ctrl = self.u_range[0] * torch.abs(dvds[..., :2]) / ctrl_len
+
+        return opt_ctrl
     
     def optimal_disturbance(self, state, dvds):
         # disturbance aims to maximize the value
-        distb_len = torch.sqrt(dvds[2]*dvds[2]+dvds[3]*dvds[3])
-        opt_distb1 = self.d_range[1] * torch.abs(dvds[2]) / distb_len
-        opt_distb2 = self.d_range[1] * torch.abs(dvds[3]) / distb_len
+        distb_len = torch.norm(dvds[..., 2] * dvds[..., 2] + dvds[..., 3] * dvds[..., 3], dim=-1)
+        opt_distb = self.d_range[1] * torch.abs(dvds[..., 2:]) / distb_len
         
-        return torch.cat((opt_distb1[..., None], opt_distb2[..., None]), dim=-1)
+        return opt_distb
     
     def plot_config(self):
         return {
