@@ -9,8 +9,7 @@ import numpy as np
 import pickle
 
 from datetime import datetime
-from dynamics import *
-from dynamics.dynamics import Dynamics
+from dynamics import dynamics, reach_avoid_games, dynamics_distb
 from experiments import experiments
 from utils import modules, dataio, losses
 
@@ -95,16 +94,19 @@ if (mode == 'all') or (mode == 'train'):
     p.add_argument('--minWith', type=str, required=True, choices=['none', 'zero', 'target'], help='BRS vs BRT computation (typically should be using target for BRT)')
     
     #TODO Hanyang: make it clean and beautiful
+    # load dynamics_class choices dynamically from dynamics module
+    # dynamics_classes_dict = {name: clss for name, clss in inspect.getmembers(dynamics, inspect.isclass) if clss.__bases__[0] == dynamics.Dynamics}
+    # Dynamically load classes from the `dynamics` folder
+    dynamics_modules = [dynamics, reach_avoid_games, dynamics_distb]
     # Create a dictionary of dynamics classes
     dynamics_classes_dict = {}
-    for module_name in __all__:
-        module = globals()[module_name]  # Access the dynamically imported module
+    for module in dynamics_modules:
         classes = {
             name: clss
             for name, clss in inspect.getmembers(module, inspect.isclass)
-            if issubclass(clss, Dynamics) and clss is not Dynamics
+            if clss.__bases__[0] == dynamics.Dynamics  # Replace with your base class
         }
-    dynamics_classes_dict.update(classes)
+        dynamics_classes_dict.update(classes)
     p.add_argument('--dynamics_class', type=str, required=True, choices=dynamics_classes_dict.keys(), help='Dynamics class to use.')
     # load special dynamics_class arguments dynamically from chosen dynamics class
     dynamics_class = dynamics_classes_dict[p.parse_known_args()[0].dynamics_class]
@@ -176,10 +178,17 @@ random.seed(orig_opt.seed)
 np.random.seed(orig_opt.seed)
 
 #TODO Hanyang: make it clean and beautiful
-if orig_opt.dynamics_class not in dynamics_classes_dict:
-    raise AttributeError(f"No class named '{orig_opt.dynamics_class}' found in the dynamics package.")
-# Get the dynamics class from the dictionary
-dynamics_class = dynamics_classes_dict[orig_opt.dynamics_class]
+# Try to get the dynamics class from the modules
+try:
+    dynamics_class = getattr(dynamics, orig_opt.dynamics_class)
+except AttributeError:
+    try:
+        dynamics_class = getattr(reach_avoid_games, orig_opt.dynamics_class)
+    except AttributeError:
+        try: 
+            dynamics_class = getattr(dynamics_distb, orig_opt.dynamics_class)
+        except AttributeError:
+            raise AttributeError(f"Neither 'dynamics' nor 'reach_avoid_games' has a class named '{orig_opt.dynamics_class}'")
 dynamics = dynamics_class(**{argname: getattr(orig_opt, argname) for argname in inspect.signature(dynamics_class).parameters.keys() if argname != 'self'})
 dynamics.deepreach_model=orig_opt.deepreach_model
 dataset = dataio.ReachabilityDataset(
