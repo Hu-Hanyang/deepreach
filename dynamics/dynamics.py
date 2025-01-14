@@ -52,10 +52,10 @@ class Dynamics(ABC):
         return input
 
     # convert model io to real value
-    def io_to_value(self, input, output):  # exact: V(x,t) =  l(x) + t * NN(x,t)
+    def io_to_value(self, input, output):  
         if self.deepreach_model=="diff":
             return (output * self.value_var / self.value_normto) + self.boundary_fn(self.input_to_coord(input)[..., 1:])
-        elif self.deepreach_model=="exact":
+        elif self.deepreach_model=="exact":  # exact: V(x,t) =  l(x) + t * NN(x,t)
             return (output * input[..., 0] * self.value_var / self.value_normto) + self.boundary_fn(self.input_to_coord(input)[..., 1:])
         else:
             return (output * self.value_var / self.value_normto) + self.value_mean

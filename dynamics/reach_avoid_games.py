@@ -1,7 +1,4 @@
-import math
 import torch
-
-from utils import diff_operators
 from dynamics.dynamics import Dynamics
 
 """
@@ -75,8 +72,6 @@ class OneSIGvsOneSIG(Dynamics):
         return capture_dist
     
     def boundary_fn(self, state):
-        print(f"reach_fn output: {self.reach_fn(state)}")
-        print(f"avoid_fn output: {self.avoid_fn(state)}")
         return torch.maximum(self.reach_fn(state), -self.avoid_fn(state))
     
     def sample_target_state(self, num_samples):
