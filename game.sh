@@ -1,0 +1,29 @@
+#!/bin/bash
+python run_experiment.py \
+    --mode train \
+    --experiment_class DeepReach \
+    --dynamics_class OneSIGvsOneSIG \
+    --experiment_name RAGame_0119 \
+    --minWith target \
+    --speed_a 1.0 \
+    --speed_d 1.5 \
+    --u_min -1.0 \
+    --u_max 1.0 \
+    --d_min -1.0 \
+    --d_max 1.0 \
+    --pretrain \
+    --pretrain_iters 60000 \
+    --adj_rel_grads True \
+    --batch_size 1 \
+    --clip_grad 0.0 \
+    --counter_start 0 \
+    --counter_end 100000 \
+    --epochs_til_ckpt 1000 \
+    --num_epochs 160000 \
+    --num_src_samples 10000 \
+    --numpoints 65000  \
+    --use_wandb \
+    --wandb_name tune_hyperparam_0119  \
+    --wandb_group 1vs1_sig \
+    --wandb_entity huhy97 \
+    --wandb_project RAGames \
